@@ -1,0 +1,456 @@
+openapi: 3.0.3
+info:
+  title: EuroFibo Clock API
+  version: 1.0.0
+  description: >
+    Servicio con arquitectura hexagonal (puertos y adaptadores). Expone la hora
+    local de Colombia, el cálculo de Fibonacci, el catálogo de capitales europeas
+    y las estrategias EuroFibo Clock (A1, A2, A3).
+servers:
+  - url: http://127.0.0.1:8484
+    description: Servidor local
+
+tags:
+  - name: time
+    description: Hora local de Colombia
+  - name: fibonacci
+    description: Cálculo de la sucesión de Fibonacci
+  - name: capitals
+    description: Capitales de países europeos
+  - name: eurofibo
+    description: Estrategias EuroFibo Clock (A1, A2, A3) que combinan Fibonacci y la hora de Colombia
+  - name: meta
+    description: Índice y documentación
+
+paths:
+  /:
+    get:
+      tags: [meta]
+      summary: Índice del servicio
+      operationId: getIndex
+      responses:
+        "200":
+          description: Lista de endpoints disponibles
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/time/colombia:
+    get:
+      tags: [time]
+      summary: Hora local actual en Colombia (America/Bogota)
+      operationId: getColombiaTime
+      responses:
+        "200":
+          description: Instante actual proyectado a la zona America/Bogota
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ColombiaTimeResponse"
+
+  /api/v1/fibonacci/{n}:
+    get:
+      tags: [fibonacci]
+      summary: Fibonacci de n (n como segmento de ruta)
+      operationId: getFibonacciByPath
+      parameters:
+        - name: n
+          in: path
+          required: true
+          description: Índice de la sucesión, entero en el rango [0, 10000]
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            maximum: 10000
+          example: 90
+      responses:
+        "200":
+          description: Valor de Fibonacci en el índice n
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FibonacciResponse"
+        "400":
+          description: n no es un entero válido o está fuera de rango
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/fibonacci:
+    get:
+      tags: [fibonacci]
+      summary: Fibonacci de n (n como query param)
+      operationId: getFibonacciByQuery
+      parameters:
+        - name: n
+          in: query
+          required: true
+          description: Índice de la sucesión, entero en el rango [0, 10000]
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            maximum: 10000
+          example: 10
+      responses:
+        "200":
+          description: Valor de Fibonacci en el índice n
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FibonacciResponse"
+        "400":
+          description: n no es un entero válido o está fuera de rango
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/capitals/europe:
+    get:
+      tags: [capitals]
+      summary: Lista de las capitales europeas soportadas
+      operationId: listEuropeanCapitals
+      responses:
+        "200":
+          description: Catálogo completo (5 países)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalsResponse"
+
+  /api/v1/capitals/europe/{country}:
+    get:
+      tags: [capitals]
+      summary: Capital de un país europeo
+      operationId: getEuropeanCapital
+      parameters:
+        - name: country
+          in: path
+          required: true
+          description: Nombre del país en inglés (no distingue mayúsculas)
+          schema:
+            type: string
+          examples:
+            spain:
+              value: Spain
+            germany:
+              value: germany
+      responses:
+        "200":
+          description: País y su capital
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapitalResponse"
+        "400":
+          description: El país no pertenece al catálogo soportado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/eurofibo/algorithms:
+    get:
+      tags: [eurofibo]
+      summary: Metadatos de las estrategias de selección (A1, A2, A3)
+      operationId: listEuroFiboAlgorithms
+      responses:
+        "200":
+          description: Estrategias registradas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlgorithmsResponse"
+
+  /api/v1/eurofibo/{algorithm}/{n}:
+    get:
+      tags: [eurofibo]
+      summary: Ejecuta una estrategia EuroFibo Clock para el índice n
+      description: >
+        Combina Fibonacci (recursión de cola con acumuladores) y la hora actual de
+        Colombia para elegir una capital europea. La forma de la respuesta depende
+        del algoritmo: A1 -> CapitalSelectionResponse, A2 -> TemporalPassportResponse,
+        A3 -> EuropeanJourneyResponse.
+      operationId: runEuroFiboAlgorithm
+      parameters:
+        - name: algorithm
+          in: path
+          required: true
+          description: Identificador de la estrategia
+          schema:
+            type: string
+            enum: [a1, a2, a3]
+          example: a2
+        - name: n
+          in: path
+          required: true
+          description: Índice de Fibonacci, entero en el rango [0, 10000]
+          schema:
+            type: integer
+            format: int32
+            minimum: 0
+            maximum: 10000
+          example: 5
+      responses:
+        "200":
+          description: Resultado de la estrategia
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CapitalSelectionResponse"
+                  - $ref: "#/components/schemas/TemporalPassportResponse"
+                  - $ref: "#/components/schemas/EuropeanJourneyResponse"
+        "400":
+          description: Algoritmo desconocido, n no numérico o fuera de rango
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    ColombiaTimeResponse:
+      type: object
+      required: [zone, date, time, utcOffset, isoDateTime, epochSecond]
+      properties:
+        zone:
+          type: string
+          example: America/Bogota
+        date:
+          type: string
+          format: date
+          example: "2026-08-31"
+        time:
+          type: string
+          example: "16:36:50.302"
+        utcOffset:
+          type: string
+          example: "-05:00"
+        isoDateTime:
+          type: string
+          example: "2026-08-31T16:36:50.302-05:00"
+        epochSecond:
+          type: integer
+          format: int64
+          example: 1788212210
+
+    FibonacciResponse:
+      type: object
+      required: [n, value, digits]
+      properties:
+        n:
+          type: integer
+          format: int32
+          example: 90
+        value:
+          type: string
+          description: Valor de Fibonacci como cadena (puede exceder 64 bits)
+          example: "2880067194370816120"
+        digits:
+          type: integer
+          format: int32
+          example: 19
+
+    CapitalResponse:
+      type: object
+      required: [country, capital]
+      properties:
+        country:
+          type: string
+          example: Spain
+        capital:
+          type: string
+          example: Madrid
+
+    CapitalsResponse:
+      type: object
+      required: [count, capitals]
+      properties:
+        count:
+          type: integer
+          format: int32
+          example: 5
+        capitals:
+          type: array
+          items:
+            $ref: "#/components/schemas/CapitalResponse"
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          enum: [domain-error, invalid-request, internal-error]
+          example: domain-error
+        message:
+          type: string
+          example: "Fibonacci index must be an integer in [0, 10000], but was -3"
+
+    AlgorithmDescriptorResponse:
+      type: object
+      required: [id, name, businessQuestion, catalogueSize]
+      properties:
+        id:
+          type: string
+          enum: [a1, a2, a3]
+          example: a2
+        name:
+          type: string
+          example: Fibonacci Temporal Passport
+        businessQuestion:
+          type: string
+        catalogueSize:
+          type: integer
+          format: int32
+          example: 5
+
+    AlgorithmsResponse:
+      type: object
+      required: [count, algorithms]
+      properties:
+        count:
+          type: integer
+          format: int32
+          example: 3
+        algorithms:
+          type: array
+          items:
+            $ref: "#/components/schemas/AlgorithmDescriptorResponse"
+
+    CapitalSelectionResponse:
+      description: Resultado de A1 - Fibonacci Colombian Capital Selector
+      type: object
+      required:
+        [algorithm, fibonacciInput, fibonacciValue, fibonacciFactor, colombianTime,
+         temporalFactor, rawIndex, capitalIndex, selected]
+      properties:
+        algorithm:
+          type: string
+          example: a1
+        fibonacciInput:
+          type: integer
+          format: int32
+          example: 5
+        fibonacciValue:
+          type: string
+          description: fibonacci(n) como cadena
+          example: "5"
+        fibonacciFactor:
+          type: string
+          description: n + fibonacci(n)
+          example: "10"
+        colombianTime:
+          type: string
+          example: "13:40:34"
+        temporalFactor:
+          type: integer
+          format: int32
+          description: horas + minutos + segundos
+          example: 87
+        rawIndex:
+          type: string
+          description: temporalFactor / fibonacciFactor (división entera)
+          example: "8"
+        capitalIndex:
+          type: integer
+          format: int32
+          description: rawIndex % tamañoCatálogo
+          example: 3
+        selected:
+          $ref: "#/components/schemas/CapitalResponse"
+
+    TemporalPassportResponse:
+      description: Resultado de A2 - Fibonacci Temporal Passport
+      type: object
+      required:
+        [algorithm, fibonacciInput, fibonacciValue, fibonacciCode, colombianTime,
+         temporalScore, capitalIndex, destination, passportCode]
+      properties:
+        algorithm:
+          type: string
+          example: a2
+        fibonacciInput:
+          type: integer
+          format: int32
+          example: 5
+        fibonacciValue:
+          type: string
+          example: "5"
+        fibonacciCode:
+          type: string
+          description: n + fibonacci(n)
+          example: "10"
+        colombianTime:
+          type: string
+          example: "13:40:34"
+        temporalScore:
+          type: string
+          description: "European Temporal Score: horas * fibonacciCode + minutos + segundos"
+          example: "204"
+        capitalIndex:
+          type: integer
+          format: int32
+          description: temporalScore % tamañoCatálogo
+          example: 4
+        destination:
+          $ref: "#/components/schemas/CapitalResponse"
+        passportCode:
+          type: string
+          example: FIB-5-COL-134034-204-LISBON
+
+    EuropeanJourneyResponse:
+      description: Resultado de A3 - Viajero Temporal Europeo (catálogo extendido de 10)
+      type: object
+      required:
+        [algorithm, fibonacciInput, fibonacciValue, startIndex, startCapital,
+         colombianTime, temporalDisplacement, effectiveDisplacement,
+         destinationIndex, destinationCapital, path]
+      properties:
+        algorithm:
+          type: string
+          example: a3
+        fibonacciInput:
+          type: integer
+          format: int32
+          example: 5
+        fibonacciValue:
+          type: string
+          example: "5"
+        startIndex:
+          type: integer
+          format: int32
+          description: fibonacci(n) % tamañoCatálogo
+          example: 5
+        startCapital:
+          $ref: "#/components/schemas/CapitalResponse"
+        colombianTime:
+          type: string
+          example: "13:40:34"
+        temporalDisplacement:
+          type: integer
+          format: int64
+          description: horas * minutos + segundos
+          example: 554
+        effectiveDisplacement:
+          type: integer
+          format: int32
+          description: temporalDisplacement % tamañoCatálogo
+          example: 4
+        destinationIndex:
+          type: integer
+          format: int32
+          description: (startIndex + effectiveDisplacement) % tamañoCatálogo
+          example: 9
+        destinationCapital:
+          $ref: "#/components/schemas/CapitalResponse"
+        path:
+          type: array
+          description: Recorrido circular desde startCapital hasta destinationCapital
+          items:
+            $ref: "#/components/schemas/CapitalResponse"
