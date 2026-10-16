@@ -9,6 +9,18 @@ lazy val root = rootProject
     idePackagePrefix := Some("borja.eurofiboclock"),
     Compile / run / mainClass := Some("borja.eurofiboclock.Main"),
     run / fork := true,
+    // Fat jar para la imagen Docker: `sbt assembly` -> target/**/eurofibo-clock.jar
+    assembly / assemblyJarName := "eurofibo-clock.jar",
+    assembly / mainClass := Some("borja.eurofiboclock.Main"),
+    assembly / assemblyMergeStrategy := {
+      case "module-info.class"                       => MergeStrategy.discard
+      case PathList("META-INF", "versions", _*)      => MergeStrategy.discard
+      case PathList("META-INF", "services", _*)      => MergeStrategy.concat
+      case PathList("META-INF", "MANIFEST.MF")       => MergeStrategy.discard
+      case PathList("META-INF", x) if x.toLowerCase.endsWith(".sf") || x.toLowerCase.endsWith(".dsa") || x.toLowerCase.endsWith(".rsa") =>
+        MergeStrategy.discard
+      case _                                         => MergeStrategy.first
+    },
     libraryDependencies ++= Seq(
       "org.http4s"    %% "http4s-ember-server" % http4sVersion,
       "org.http4s"    %% "http4s-dsl"          % http4sVersion,

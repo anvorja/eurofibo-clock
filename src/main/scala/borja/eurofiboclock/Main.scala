@@ -36,7 +36,7 @@ object Main extends IOApp.Simple:
     val api = new HttpApi[IO](timeUseCase, fibonacciUseCase, capitalsUseCase, euroFiboUseCase)
 
     HttpServer
-      .resource[IO](api.httpApp)
+      .resource[IO](api.httpApp, HttpServer.hostFromEnv, HttpServer.portFromEnv)
       .use { server =>
         IO.println(s"EuroFibo Clock listening on http://${server.address}") *> IO.never
       }

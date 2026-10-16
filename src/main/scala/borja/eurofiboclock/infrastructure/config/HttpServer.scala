@@ -14,6 +14,10 @@ object HttpServer:
   val DefaultHost: Host = host"127.0.0.1"
   val DefaultPort: Port = port"8484"
 
+  /** HOST / PORT from the environment (Render injects PORT; the container sets HOST=0.0.0.0). */
+  def hostFromEnv: Host = sys.env.get("HOST").flatMap(Host.fromString).getOrElse(DefaultHost)
+  def portFromEnv: Port = sys.env.get("PORT").flatMap(Port.fromString).getOrElse(DefaultPort)
+
   def resource[F[_]: Async: Network](
       httpApp: HttpApp[F],
       bindHost: Host = DefaultHost,
