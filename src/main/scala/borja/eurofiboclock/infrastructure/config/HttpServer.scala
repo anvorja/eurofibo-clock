@@ -21,9 +21,10 @@ object HttpServer:
   def resource[F[_]: Async: Network](
       httpApp: HttpApp[F],
       bindHost: Host = DefaultHost,
-      bindPort: Port = DefaultPort
+      bindPort: Port = DefaultPort,
+      cors: CorsConfig = CorsConfig(Set.empty)
   ): Resource[F, Server] =
-    val logged = Logger.httpApp[F](logHeaders = true, logBody = false)(httpApp)
+    val logged = Logger.httpApp[F](logHeaders = true, logBody = false)(cors(httpApp))
     EmberServerBuilder
       .default[F]
       .withHost(bindHost)

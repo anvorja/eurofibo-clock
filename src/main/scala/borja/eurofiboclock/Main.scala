@@ -11,7 +11,7 @@ import borja.eurofiboclock.application.service.{
 import borja.eurofiboclock.infrastructure.adapter.in.rest.HttpApi
 import borja.eurofiboclock.infrastructure.adapter.out.capital.StaticEuropeanCapitalRepository
 import borja.eurofiboclock.infrastructure.adapter.out.time.SystemClockAdapter
-import borja.eurofiboclock.infrastructure.config.HttpServer
+import borja.eurofiboclock.infrastructure.config.{CorsConfig, HttpServer}
 
 /** Composition root.
   *
@@ -36,7 +36,7 @@ object Main extends IOApp.Simple:
     val api = new HttpApi[IO](timeUseCase, fibonacciUseCase, capitalsUseCase, euroFiboUseCase)
 
     HttpServer
-      .resource[IO](api.httpApp, HttpServer.hostFromEnv, HttpServer.portFromEnv)
+      .resource[IO](api.httpApp, HttpServer.hostFromEnv, HttpServer.portFromEnv, CorsConfig.fromEnv)
       .use { server =>
         IO.println(s"EuroFibo Clock listening on http://${server.address}") *> IO.never
       }

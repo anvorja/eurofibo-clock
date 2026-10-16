@@ -11,6 +11,16 @@ Fibonacci y la hora de Colombia para elegir una capital europea.
 - **Puerto de escucha:** `http://127.0.0.1:8484`
 - **Build:** sbt 2 / Scala 3.9
 
+## Configuración (variables de entorno)
+
+| Variable               | Por defecto | Descripción                                                                                                   |
+| ---------------------- | ----------- | ------------------------------------------------------------------------------------------------------------- |
+| `HOST`                 | `127.0.0.1` | Interfaz de escucha (la imagen Docker usa `0.0.0.0`)                                                          |
+| `PORT`                 | `8484`      | Puerto (Render lo inyecta)                                                                                    |
+| `CORS_ALLOWED_ORIGINS` | vacío       | Orígenes permitidos, separados por coma (`https://mi-sitio.netlify.app`). Vacío = solo mismo origen. Sin comodín |
+
+CORS solo permite `GET`, `HEAD` y `OPTIONS`, sin credenciales. En Render, define `CORS_ALLOWED_ORIGINS` con el dominio de Netlify.
+
 ## Arquitectura hexagonal
 
 ```
