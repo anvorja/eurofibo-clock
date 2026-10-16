@@ -36,6 +36,19 @@ paths:
               schema:
                 type: object
 
+  /healthz:
+    get:
+      tags: [meta]
+      summary: Estado del servicio (health check)
+      operationId: getHealth
+      responses:
+        "200":
+          description: El servicio está vivo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
   /api/v1/time/colombia:
     get:
       tags: [time]
@@ -214,6 +227,17 @@ paths:
 
 components:
   schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: eurofibo-clock
+
     ColombiaTimeResponse:
       type: object
       required: [zone, date, time, utcOffset, isoDateTime, epochSecond]

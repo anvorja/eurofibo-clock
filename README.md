@@ -93,6 +93,7 @@ sbt test
 | Método y ruta                           | Descripción                                                            |
 | --------------------------------------- | ---------------------------------------------------------------------- |
 | `GET /`                                 | Índice con la lista de endpoints                                       |
+| `GET /healthz`                          | Health check: `{"status":"ok","service":"eurofibo-clock"}`          |
 | `GET /api/v1/time/colombia`             | Hora local actual en `America/Bogota`                                  |
 | `GET /api/v1/fibonacci/{n}`             | Fibonacci de `n` (0 ≤ n ≤ 10000), `n` como segmento                    |
 | `GET /api/v1/fibonacci?n={n}`           | Igual, con `n` como query param                                        |

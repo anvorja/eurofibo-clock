@@ -53,3 +53,8 @@ hs_err_pid*
 *.class
 *.tasty
 *.log
+
+### Variables de entorno (nunca se versionan) ###
+.env
+.env.*
+!.env.example

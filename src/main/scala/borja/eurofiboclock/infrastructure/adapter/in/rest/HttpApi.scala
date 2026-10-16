@@ -32,11 +32,16 @@ final class HttpApi[F[_]: Async](
     euroFiboUseCase: RunCapitalAlgorithmUseCase[F]
 ) extends Http4sDsl[F]:
 
+  private val ServiceName = "eurofibo-clock"
+
   private val indexRoutes: HttpRoutes[F] = HttpRoutes.of[F] {
+    // Liveness probe (Render health check): no use case involved, so it never depends on domain logic.
+    case GET -> Root / "healthz" =>
+      Ok(Json.obj("status" -> Json.fromString("ok"), "service" -> Json.fromString(ServiceName)))
     case GET -> Root =>
       Ok(
         Json.obj(
-          "service" -> Json.fromString("eurofibo-clock"),
+          "service" -> Json.fromString(ServiceName),
           "endpoints" -> Json.arr(
             Json.fromString("GET /api/v1/time/colombia"),
             Json.fromString("GET /api/v1/fibonacci/{n}"),
@@ -45,6 +50,7 @@ final class HttpApi[F[_]: Async](
             Json.fromString("GET /api/v1/capitals/europe/{country}"),
             Json.fromString("GET /api/v1/eurofibo/algorithms"),
             Json.fromString("GET /api/v1/eurofibo/{algorithm}/{n}"),
+            Json.fromString("GET /healthz"),
             Json.fromString("GET /docs"),
             Json.fromString("GET /openapi.yaml")
           )
