@@ -1,0 +1,107 @@
+name: CI/CD
+
+# CI on every PR to main/develop. The rulesets require the two job names below as status checks.
+# CD, once every check passed, with the very image CI tested (never rebuilt):
+#   push to develop → Docker Hub `develop` + `<sha>`.
+#   push to main    → Docker Hub `latest` + `<sha>`.
+# Render deploys on its own: its auto-deploy watches the Docker Hub tag of the service.
+# Secrets: DOCKER_USERNAME, DOCKER_TOKEN (a Docker Hub access token, never the password).
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    # The job name is the status check the rulesets require: keep them in sync.
+    name: Compilación y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Compilación (main y test)
+        run: sbt -batch Test/compile
+      - name: Pruebas del dominio y de la aplicación
+        run: sbt -batch test
+
+  docker:
+    name: Imagen Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: eurofibo-clock:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Prueba de humo (la imagen arranca y el API responde)
+        run: |
+          docker run -d --name api -p 8484:8484 eurofibo-clock:ci
+          for _ in $(seq 1 40); do
+            curl -sf http://localhost:8484/api/v1/eurofibo/a1/5 && exit 0
+            sleep 1
+          done
+          docker logs api
+          exit 1
+      # On main and develop: the tested image travels to the publish job, which runs once every check passed.
+      - name: Guardar la imagen probada
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        run: docker save eurofibo-clock:ci | gzip > image.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+        with:
+          name: image
+          path: image.tar.gz
+          retention-days: 1
+
+  publish:
+    name: Publicar imagen
+    # Push to main or develop, and only after both required checks passed.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    needs: [quality, docker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      IMAGE: docker.io/${{ secrets.DOCKER_USERNAME }}/eurofibo-clock
+      # latest = production (main); develop = staging.
+      CHANNEL: ${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+    steps:
+      - name: Obtener short SHA
+        id: vars
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: image
+
+      - name: Cargar la imagen probada (no se reconstruye)
+        run: gunzip -c image.tar.gz | docker load
+
+      - name: Login en Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Push a Docker Hub (canal y <sha>)
+        run: |
+          for tag in "$CHANNEL" "${{ steps.vars.outputs.SHORT_SHA }}"; do
+            docker tag eurofibo-clock:ci "$IMAGE:$tag"
+            docker push "$IMAGE:$tag"
+          done
+          echo "- Imagen: \`$IMAGE:$CHANNEL\` y \`$IMAGE:${{ steps.vars.outputs.SHORT_SHA }}\`" >> "$GITHUB_STEP_SUMMARY"

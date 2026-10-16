@@ -1,0 +1,11 @@
+name: Preparar JDK y sbt
+description: Instala Temurin 21 con caché de dependencias de sbt y el lanzador de sbt (la versión exacta la fija project/build.properties).
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
+        cache: sbt
+    - uses: sbt/setup-sbt@v1
